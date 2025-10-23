@@ -43,7 +43,16 @@ route.get('/user/getUserForSideBar',protectRoutes,async(req,res)=>{
      ]})
    
     await Message.updateMany({senderID:selectedId,receiverID:myUserID},{seen:true})
-    return res.status(200).json({mess:'All Message',message:allMessage})
+
+    // Group messages by date (YYYY-MM-DD)
+    const grouped = allMessage.reduce((acc, msg) => {
+      const date = new Date(msg.createdAt).toISOString().split("T")[0]; // "2025-10-23"
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(msg);
+      return acc;
+    }, {});
+
+    return res.status(200).json({mess:'All Message',message:grouped})
     }
     catch(err){
         console.log(err);
@@ -67,9 +76,8 @@ route.post('/sendMessage',protectRoutes,async(req,res)=>{
     try{
     const {receiverID,text,image} = req.body
     const senderID = req.user._id
-     console.log("the param is ",receiverID);
-     console.log("the senderID is ",senderID);
-
+    console.log("sender id ",senderID);
+    
      
     let imageUrl ;
     if (image){
@@ -79,10 +87,24 @@ route.post('/sendMessage',protectRoutes,async(req,res)=>{
     const newMess = await Message({senderID,receiverID,text,image:imageUrl})
     await newMess.save()
     const receiverSocketId = socketMapUser[receiverID]
+    console.log("send message to rec",receiverSocketId);
+
+               const messagesArray = Array.isArray(newMess) ? newMess : [newMess];
+
+
+    const grouped = messagesArray.reduce((acc, msg) => {
+      const date = new Date(msg.createdAt).toISOString().split("T")[0]; // "2025-10-23"
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(msg);
+      return acc;
+    }, {});
+
     if (receiverSocketId){
-        io.to(receiverSocketId).emit('newMessage',newMess)
+        io.to(receiverSocketId).emit('newMessage',grouped)
+            console.log("send message to newMess",grouped);
+
     }
-    return res.status(200).json({mess:'Message sent',newMess})
+    return res.status(200).json({mess:'Message sent',message:grouped})
     }
     catch(err){
      return res.status(500).json({mess:err})
