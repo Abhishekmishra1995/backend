@@ -71,11 +71,7 @@ app.use('/api/auth',authRouter)
 app.use('/api/message',MessRouter)
 
 await connectDB()
-servere.listen(process.env.PORT,()=>{
-   
-    console.log('server is start',process.env.PORT);
-})
 
 
-
+export default app;
 
